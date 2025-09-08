@@ -2,7 +2,9 @@
 import numpy as np
 from numba import jit
 from datetime import datetime
+from typing import Tuple, Optional, Dict
 import pvlib
+import logging
 
 class UrbanThermalModel:
     """Model bilansu cieplnego miasta z uwzględnieniem promieniowania i antropogenicznych źródeł ciepła"""
