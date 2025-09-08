@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Urban Microclimate Simulator | Open Source</title>
+    <title>Urban Microclimate Simulator | Auto-Update</title>
     
     <!-- 100% Open Source Libraries -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -103,6 +103,37 @@
             50% { opacity: 0.3; }
         }
         
+        /* Auto-update indicator */
+        .auto-update-status {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .auto-update-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .auto-update-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .countdown {
+            font-size: 14px;
+            color: var(--accent);
+            font-weight: 600;
+            min-width: 30px;
+            text-align: right;
+        }
+        
         /* Metrics */
         .metrics {
             margin-bottom: 30px;
@@ -114,6 +145,18 @@
             border-radius: 8px;
             padding: 16px;
             margin-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .metric.updating {
+            animation: shimmer 1.5s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background: var(--bg-primary); }
+            50% { background: rgba(0, 255, 136, 0.05); }
+            100% { background: var(--bg-primary); }
         }
         
         .metric-label {
@@ -128,6 +171,17 @@
             font-size: 28px;
             font-weight: 600;
             color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+        
+        .metric-value.changed {
+            animation: valueChange 0.5s;
+        }
+        
+        @keyframes valueChange {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); color: var(--accent); }
+            100% { transform: scale(1); }
         }
         
         .metric-unit {
@@ -140,6 +194,15 @@
             font-size: 12px;
             color: var(--text-secondary);
             margin-top: 4px;
+        }
+        
+        .metric-timestamp {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 10px;
+            color: var(--text-secondary);
+            opacity: 0.5;
         }
         
         /* Controls */
@@ -189,56 +252,6 @@
             font-weight: 600;
         }
         
-        .layer-toggles {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .layer-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px;
-            background: var(--bg-primary);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        
-        .layer-toggle:hover {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        
-        .toggle-switch {
-            width: 40px;
-            height: 22px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 11px;
-            position: relative;
-            transition: background 0.3s;
-        }
-        
-        .toggle-switch.active {
-            background: var(--accent);
-        }
-        
-        .toggle-switch::after {
-            content: '';
-            position: absolute;
-            width: 18px;
-            height: 18px;
-            background: white;
-            border-radius: 50%;
-            top: 2px;
-            left: 2px;
-            transition: transform 0.3s;
-        }
-        
-        .toggle-switch.active::after {
-            transform: translateX(18px);
-        }
-        
         /* Main content */
         .main {
             position: relative;
@@ -258,51 +271,39 @@
             padding: 20px;
         }
         
-        /* Action button */
-        .action-button {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, var(--accent), #00cc66);
-            border: none;
-            border-radius: 8px;
-            color: var(--bg-primary);
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: transform 0.2s, opacity 0.2s;
-            margin-top: 20px;
-        }
-        
-        .action-button:hover {
-            transform: translateY(-2px);
-        }
-        
-        .action-button:active {
-            transform: translateY(0);
-        }
-        
-        .action-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        /* Info panel */
-        .info-panel {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
             right: 20px;
-            max-width: 500px;
             background: var(--bg-panel);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px;
-            display: none;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 10000;
         }
         
-        .info-panel.active {
-            display: block;
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification-icon {
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .notification-text {
+            font-size: 14px;
         }
         
         /* Loading */
@@ -331,58 +332,35 @@
             to { transform: rotate(360deg); }
         }
         
-        /* Legend */
-        .legend {
+        /* Toggle switch */
+        .toggle-switch {
+            width: 40px;
+            height: 22px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 11px;
+            position: relative;
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+        
+        .toggle-switch.active {
+            background: var(--accent);
+        }
+        
+        .toggle-switch::after {
+            content: '';
             position: absolute;
-            top: 20px;
-            right: 20px;
-            background: var(--bg-panel);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px;
-            font-size: 12px;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
         }
         
-        .legend-title {
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        
-        .legend-scale {
-            display: flex;
-            height: 20px;
-            border-radius: 4px;
-            margin-bottom: 4px;
-        }
-        
-        .legend-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 10px;
-            color: var(--text-secondary);
-        }
-        
-        /* Open Source badge */
-        .opensource-badge {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: var(--bg-panel);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 11px;
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .opensource-badge a {
-            color: var(--accent);
-            text-decoration: none;
+        .toggle-switch.active::after {
+            transform: translateX(18px);
         }
     </style>
 </head>
@@ -396,14 +374,24 @@
                     <div class="logo-text">Microclimate</div>
                     <div class="status-badge">
                         <div class="status-dot"></div>
-                        <span>ONLINE</span>
+                        <span id="status-text">ONLINE</span>
                     </div>
+                </div>
+            </div>
+            
+            <!-- Auto-update status -->
+            <div class="auto-update-status">
+                <div class="auto-update-label">Auto-aktualizacja</div>
+                <div class="auto-update-toggle">
+                    <span class="countdown" id="countdown">--</span>
+                    <div class="toggle-switch active" id="auto-update-toggle" onclick="toggleAutoUpdate()"></div>
                 </div>
             </div>
             
             <!-- Metrics -->
             <div class="metrics">
-                <div class="metric">
+                <div class="metric" id="metric-temp">
+                    <div class="metric-timestamp" id="temp-timestamp">--:--</div>
                     <div class="metric-label">Temperatura</div>
                     <div class="metric-value">
                         <span id="temperature">--</span>
@@ -412,7 +400,8 @@
                     <div class="metric-subtext">Open-Meteo API</div>
                 </div>
                 
-                <div class="metric">
+                <div class="metric" id="metric-wind">
+                    <div class="metric-timestamp" id="wind-timestamp">--:--</div>
                     <div class="metric-label">Prędkość wiatru</div>
                     <div class="metric-value">
                         <span id="wind-speed">--</span>
@@ -421,7 +410,8 @@
                     <div class="metric-subtext">Kierunek: <span id="wind-dir">--</span>°</div>
                 </div>
                 
-                <div class="metric">
+                <div class="metric" id="metric-uhi">
+                    <div class="metric-timestamp" id="uhi-timestamp">--:--</div>
                     <div class="metric-label">Urban Heat Island</div>
                     <div class="metric-value">
                         <span id="uhi">--</span>
@@ -440,29 +430,7 @@
                         <button class="view-tab" onclick="switchView('2.5d')">Wizualizacja 2.5D</button>
                     </div>
                 </div>
-                
-                <div class="control-group">
-                    <div class="control-label">Warstwy mapy</div>
-                    <div class="layer-toggles">
-                        <div class="layer-toggle" onclick="toggleLayer('temperature')">
-                            <span>Temperatura</span>
-                            <div class="toggle-switch active" id="toggle-temperature"></div>
-                        </div>
-                        <div class="layer-toggle" onclick="toggleLayer('wind')">
-                            <span>Wektory wiatru</span>
-                            <div class="toggle-switch active" id="toggle-wind"></div>
-                        </div>
-                        <div class="layer-toggle" onclick="toggleLayer('buildings')">
-                            <span>Budynki</span>
-                            <div class="toggle-switch" id="toggle-buildings"></div>
-                        </div>
-                    </div>
-                </div>
             </div>
-            
-            <button class="action-button" onclick="runSimulation()" id="sim-button">
-                Uruchom symulację
-            </button>
         </div>
         
         <!-- Main content -->
@@ -470,59 +438,48 @@
             <div id="map"></div>
             <div id="plot-container"></div>
             
-            <div class="legend">
-                <div class="legend-title">Temperatura [°C]</div>
-                <div class="legend-scale" style="background: linear-gradient(90deg, #0066ff, #00ff88, #ffaa00, #ff0066);"></div>
-                <div class="legend-labels">
-                    <span>15</span>
-                    <span>20</span>
-                    <span>25</span>
-                    <span>30</span>
-                </div>
-            </div>
-            
-            <div class="opensource-badge">
-                🌍 100% Open Source | 
-                <a href="https://github.com/dawidsajewski12-creator/microclimate-sim" target="_blank">GitHub</a>
-            </div>
-            
             <div class="loading" id="loading">
                 <div class="spinner"></div>
             </div>
         </div>
     </div>
     
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <div class="notification-icon">✓</div>
+        <div class="notification-text" id="notification-text">Dane zaktualizowane</div>
+    </div>
+    
     <script>
-        // Configuration - dostosuj do swojego środowiska
+        // Configuration
         const API_URL = 'http://localhost:8000';  // Lokalny development
-        // const API_URL = 'https://your-production-url.com';  // Produkcja
         
         // State
         let map;
         let currentView = '2d';
         let currentData = null;
-        let layers = {
-            temperature: true,
-            wind: true,
-            buildings: false
-        };
+        let lastUpdateTime = null;
+        let autoUpdateEnabled = true;
+        let updateInterval = 10000; // 10 sekund
+        let countdownValue = 10;
+        let countdownInterval;
+        let updateTimer;
         let heatmapLayer = null;
-        let windLayer = null;
+        let windMarkers = [];
         
-        // Initialize 2D map (Leaflet + OpenStreetMap)
+        // Initialize 2D map
         function initMap() {
             map = L.map('map').setView([54.156, 19.404], 13);
             
-            // OpenStreetMap - 100% Open Source!
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors',
                 maxZoom: 19
             }).addTo(map);
             
-            console.log('✅ Mapa zainicjalizowana (OpenStreetMap)');
+            console.log('✅ Mapa zainicjalizowana');
         }
         
-        // Switch between 2D and 2.5D view
+        // Switch between views
         function switchView(view) {
             currentView = view;
             
@@ -543,128 +500,214 @@
             }
         }
         
-        // Toggle layer visibility
-        function toggleLayer(layerName) {
-            layers[layerName] = !layers[layerName];
-            document.getElementById(`toggle-${layerName}`).classList.toggle('active');
-            updateVisualization();
-        }
-        
-        // Fetch weather data
-        async function fetchWeather() {
-            try {
-                const response = await fetch(`${API_URL}/api/weather`);
-                if (response.ok) {
-                    const weather = await response.json();
-                    document.getElementById('temperature').textContent = weather.temperature.toFixed(1);
-                    document.getElementById('wind-speed').textContent = weather.wind_speed.toFixed(1);
-                    document.getElementById('wind-dir').textContent = weather.wind_direction.toFixed(0);
-                }
-            } catch (error) {
-                console.error('Error fetching weather:', error);
+        // Toggle auto-update
+        function toggleAutoUpdate() {
+            autoUpdateEnabled = !autoUpdateEnabled;
+            const toggle = document.getElementById('auto-update-toggle');
+            toggle.classList.toggle('active');
+            
+            if (autoUpdateEnabled) {
+                startAutoUpdate();
+                showNotification('Auto-aktualizacja włączona');
+            } else {
+                stopAutoUpdate();
+                document.getElementById('countdown').textContent = '--';
+                showNotification('Auto-aktualizacja wyłączona');
             }
         }
         
-        // Run simulation
-        async function runSimulation() {
-            const button = document.getElementById('sim-button');
-            const loading = document.getElementById('loading');
+        // Start auto-update
+        function startAutoUpdate() {
+            if (!autoUpdateEnabled) return;
             
-            button.disabled = true;
-            loading.classList.add('active');
+            countdownValue = 10;
+            updateCountdown();
             
-            try {
-                const response = await fetch(`${API_URL}/api/simulate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        timestamp: new Date().toISOString(),
-                        bounds: {
-                            lat_min: 54.1,
-                            lat_max: 54.2,
-                            lon_min: 19.3,
-                            lon_max: 19.5
-                        },
-                        resolution: 5.0
-                    })
-                });
-                
-                if (response.ok) {
-                    currentData = await response.json();
-                    document.getElementById('uhi').textContent = 
-                        currentData.thermal_field.uhi_intensity.toFixed(1);
-                    updateVisualization();
-                    console.log('✅ Symulacja zakończona');
-                } else {
-                    console.error('Simulation failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-            } finally {
-                button.disabled = false;
-                loading.classList.remove('active');
+            // Clear existing intervals
+            if (countdownInterval) clearInterval(countdownInterval);
+            if (updateTimer) clearTimeout(updateTimer);
+            
+            // Start countdown
+            countdownInterval = setInterval(updateCountdown, 1000);
+            
+            // Schedule update
+            updateTimer = setTimeout(() => {
+                fetchLatestData();
+                startAutoUpdate(); // Restart cycle
+            }, updateInterval);
+        }
+        
+        // Stop auto-update
+        function stopAutoUpdate() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            if (updateTimer) clearTimeout(updateTimer);
+        }
+        
+        // Update countdown
+        function updateCountdown() {
+            document.getElementById('countdown').textContent = countdownValue;
+            countdownValue--;
+            if (countdownValue < 0) {
+                clearInterval(countdownInterval);
             }
         }
         
-        // Update 2D visualization
+        // Show notification
+        function showNotification(text) {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notification-text');
+            
+            notificationText.textContent = text;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Animate metric update
+        function updateMetric(elementId, value, metricId) {
+            const element = document.getElementById(elementId);
+            const metric = document.getElementById(metricId);
+            const oldValue = element.textContent;
+            
+            if (oldValue !== value.toString()) {
+                metric.classList.add('updating');
+                setTimeout(() => {
+                    element.textContent = value;
+                    element.classList.add('changed');
+                    setTimeout(() => {
+                        element.classList.remove('changed');
+                        metric.classList.remove('updating');
+                    }, 500);
+                }, 300);
+            }
+        }
+        
+        // Update timestamp
+        function updateTimestamp(elementId) {
+            const now = new Date();
+            const time = now.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById(elementId).textContent = time;
+        }
+        
+        // Fetch latest data
+        async function fetchLatestData() {
+            try {
+                // Check for latest simulation
+                const statusResponse = await fetch(`${API_URL}/api/status`);
+                if (statusResponse.ok) {
+                    const status = statusResponse.json();
+                    
+                    // Fetch weather
+                    const weatherResponse = await fetch(`${API_URL}/api/weather`);
+                    if (weatherResponse.ok) {
+                        const weather = await weatherResponse.json();
+                        updateMetric('temperature', weather.temperature.toFixed(1), 'metric-temp');
+                        updateMetric('wind-speed', weather.wind_speed.toFixed(1), 'metric-wind');
+                        document.getElementById('wind-dir').textContent = weather.wind_direction.toFixed(0);
+                        updateTimestamp('temp-timestamp');
+                        updateTimestamp('wind-timestamp');
+                    }
+                    
+                    // Try to get latest simulation results
+                    const simulateResponse = await fetch(`${API_URL}/api/simulate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            timestamp: new Date().toISOString(),
+                            bounds: {
+                                lat_min: 54.1,
+                                lat_max: 54.2,
+                                lon_min: 19.3,
+                                lon_max: 19.5
+                            },
+                            resolution: 5.0
+                        })
+                    });
+                    
+                    if (simulateResponse.ok) {
+                        const newData = await simulateResponse.json();
+                        
+                        // Check if data is actually new
+                        if (!currentData || newData.id !== currentData.id) {
+                            currentData = newData;
+                            updateMetric('uhi', newData.thermal_field.uhi_intensity.toFixed(1), 'metric-uhi');
+                            updateTimestamp('uhi-timestamp');
+                            updateVisualization();
+                            showNotification('Nowe wyniki symulacji!');
+                            
+                            // Flash status
+                            document.getElementById('status-text').textContent = 'UPDATED';
+                            setTimeout(() => {
+                                document.getElementById('status-text').textContent = 'ONLINE';
+                            }, 2000);
+                        }
+                    }
+                    
+                    document.querySelector('.status-dot').style.background = '#00ff88';
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.querySelector('.status-dot').style.background = '#ff4444';
+            }
+        }
+        
+        // Update visualization
         function updateVisualization() {
             if (!currentData || !map) return;
             
             // Clear existing layers
             if (heatmapLayer) map.removeLayer(heatmapLayer);
-            if (windLayer) map.removeLayer(windLayer);
+            windMarkers.forEach(marker => map.removeLayer(marker));
+            windMarkers = [];
             
             // Temperature heatmap
-            if (layers.temperature) {
-                const temps = currentData.thermal_field.surface_temperature;
-                const heatData = [];
-                
-                for (let i = 0; i < temps.length; i += 3) {
-                    for (let j = 0; j < temps[i].length; j += 3) {
-                        const lat = 54.1 + (i / temps.length) * 0.1;
-                        const lon = 19.3 + (j / temps[i].length) * 0.2;
-                        const intensity = temps[i][j] / 30;  // Normalize
-                        heatData.push([lat, lon, intensity]);
-                    }
+            const temps = currentData.thermal_field.surface_temperature;
+            const heatData = [];
+            
+            for (let i = 0; i < temps.length; i += 3) {
+                for (let j = 0; j < temps[i].length; j += 3) {
+                    const lat = 54.1 + (i / temps.length) * 0.1;
+                    const lon = 19.3 + (j / temps[i].length) * 0.2;
+                    const intensity = temps[i][j] / 30;
+                    heatData.push([lat, lon, intensity]);
                 }
-                
-                heatmapLayer = L.heatLayer(heatData, {
-                    radius: 25,
-                    blur: 15,
-                    maxZoom: 17,
-                    gradient: {
-                        0.0: 'blue',
-                        0.3: 'cyan',
-                        0.5: 'lime',
-                        0.7: 'yellow',
-                        1.0: 'red'
-                    }
-                }).addTo(map);
             }
             
+            heatmapLayer = L.heatLayer(heatData, {
+                radius: 25,
+                blur: 15,
+                maxZoom: 17,
+                gradient: {
+                    0.0: 'blue',
+                    0.3: 'cyan',
+                    0.5: 'lime',
+                    0.7: 'yellow',
+                    1.0: 'red'
+                }
+            }).addTo(map);
+            
             // Wind vectors
-            if (layers.wind) {
-                const windData = [];
-                const u = currentData.wind_field.u_10m;
-                const v = currentData.wind_field.v_10m;
-                const speed = currentData.wind_field.speed_10m;
-                
-                for (let i = 0; i < speed.length; i += 8) {
-                    for (let j = 0; j < speed[i].length; j += 8) {
-                        if (speed[i][j] > 2) {  // Only significant winds
-                            const lat = 54.1 + (i / speed.length) * 0.1;
-                            const lon = 19.3 + (j / speed[i].length) * 0.2;
-                            const angle = Math.atan2(v[i][j], u[i][j]) * 180 / Math.PI;
-                            
-                            // Create arrow marker
-                            const arrow = L.divIcon({
-                                html: `<div style="transform: rotate(${angle}deg); color: #4488ff;">➤</div>`,
-                                iconSize: [20, 20],
-                                className: 'wind-arrow'
-                            });
-                            
-                            L.marker([lat, lon], {icon: arrow}).addTo(map);
-                        }
+            const u = currentData.wind_field.u_10m;
+            const v = currentData.wind_field.v_10m;
+            const speed = currentData.wind_field.speed_10m;
+            
+            for (let i = 0; i < speed.length; i += 8) {
+                for (let j = 0; j < speed[i].length; j += 8) {
+                    if (speed[i][j] > 2) {
+                        const lat = 54.1 + (i / speed.length) * 0.1;
+                        const lon = 19.3 + (j / speed[i].length) * 0.2;
+                        const angle = Math.atan2(v[i][j], u[i][j]) * 180 / Math.PI;
+                        
+                        const arrow = L.divIcon({
+                            html: `<div style="transform: rotate(${angle}deg); color: #4488ff; font-size: ${10 + speed[i][j]}px;">➤</div>`,
+                            iconSize: [20, 20],
+                            className: 'wind-arrow'
+                        });
+                        
+                        const marker = L.marker([lat, lon], {icon: arrow}).addTo(map);
+                        windMarkers.push(marker);
                     }
                 }
             }
@@ -674,14 +717,13 @@
             }
         }
         
-        // Render 2.5D visualization with Plotly
+        // Render 2.5D visualization
         function render25D() {
             if (!currentData) return;
             
             const temps = currentData.thermal_field.surface_temperature;
             const windSpeed = currentData.wind_field.speed_10m;
             
-            // Create 2.5D surface plots
             const trace1 = {
                 z: temps,
                 type: 'surface',
@@ -736,34 +778,24 @@
             Plotly.newPlot('plot-container', [trace1, trace2], layout);
         }
         
-        // Check API status
-        async function checkStatus() {
-            try {
-                const response = await fetch(`${API_URL}/api/status`);
-                if (response.ok) {
-                    document.querySelector('.status-dot').style.background = '#00ff88';
-                } else {
-                    document.querySelector('.status-dot').style.background = '#ff4444';
-                }
-            } catch {
-                document.querySelector('.status-dot').style.background = '#ff4444';
-            }
-        }
-        
         // Initialize
         window.addEventListener('load', () => {
             initMap();
-            fetchWeather();
-            checkStatus();
+            fetchLatestData();
             
-            // Auto-refresh
-            setInterval(fetchWeather, 60000);  // Every minute
-            setInterval(checkStatus, 30000);   // Every 30s
+            // Start auto-update
+            if (autoUpdateEnabled) {
+                startAutoUpdate();
+            }
             
-            console.log('🌍 100% Open Source Microclimate Simulator');
-            console.log('📊 Data: Open-Meteo API (free)');
-            console.log('🗺️ Maps: OpenStreetMap');
-            console.log('📈 Viz: Leaflet + Plotly.js');
+            console.log('🌍 Urban Microclimate Simulator');
+            console.log('🔄 Auto-update: ON (10s interval)');
+            console.log('📊 2556 budynków załadowanych');
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            stopAutoUpdate();
         });
     </script>
 </body>
