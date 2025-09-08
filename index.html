@@ -3,97 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Urban Microclimate Simulator | Auto-Update</title>
+    <title>Urban Microclimate Simulator</title>
     
-    <!-- 100% Open Source Libraries -->
+    <!-- Leaflet + plugins -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <script src="https://unpkg.com/georaster"></script>
+    <script src="https://unpkg.com/georaster-layer-for-leaflet"></script>
     
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        :root {
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2a2a2a;
-            --bg-panel: rgba(26, 26, 26, 0.95);
-            --border: rgba(255, 255, 255, 0.1);
-            --text-primary: #ffffff;
-            --text-secondary: #b0b0b0;
-            --accent: #00ff88;
-            --danger: #ff4444;
-            --warning: #ffaa00;
-            --info: #4488ff;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            overflow: hidden;
+            background: #1a1a1a;
+            color: #fff;
         }
         
         .container {
-            display: grid;
-            grid-template-columns: 320px 1fr;
+            display: flex;
             height: 100vh;
         }
         
         /* Sidebar */
         .sidebar {
-            background: var(--bg-secondary);
-            border-right: 1px solid var(--border);
-            overflow-y: auto;
+            width: 320px;
+            background: #2a2a2a;
             padding: 20px;
+            overflow-y: auto;
         }
         
         .logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--border);
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #00ff88;
         }
         
-        .logo-icon {
-            width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, var(--accent), var(--info));
+        /* Layer controls */
+        .layer-controls {
+            background: #1a1a1a;
             border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #888;
+            margin-bottom: 10px;
+        }
+        
+        .layer-item {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        .layer-item:last-child {
+            border-bottom: none;
+        }
+        
+        .layer-name {
+            font-size: 14px;
+        }
+        
+        .toggle {
+            width: 40px;
+            height: 20px;
+            background: #444;
+            border-radius: 10px;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .toggle.active {
+            background: #00ff88;
+        }
+        
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+        
+        .toggle.active::after {
+            transform: translateX(20px);
+        }
+        
+        /* Metrics */
+        .metric {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .metric-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        
+        .metric-value {
+            font-size: 24px;
             font-weight: bold;
         }
         
-        .logo-text {
-            font-size: 18px;
-            font-weight: 600;
+        .metric-unit {
+            font-size: 14px;
+            color: #888;
         }
         
-        .status-badge {
-            display: inline-flex;
+        /* Controls */
+        .button {
+            width: 100%;
+            padding: 12px;
+            background: #00ff88;
+            color: #1a1a1a;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        
+        .button:hover {
+            background: #00dd77;
+        }
+        
+        .button.secondary {
+            background: #444;
+            color: #fff;
+        }
+        
+        /* Main map */
+        .main {
+            flex: 1;
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(26, 26, 26, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            min-width: 150px;
+        }
+        
+        .legend-title {
+            font-size: 12px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .legend-scale {
+            display: flex;
             align-items: center;
-            gap: 6px;
-            background: rgba(0, 255, 136, 0.1);
-            color: var(--accent);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+        
+        .legend-gradient {
+            width: 100px;
+            height: 20px;
+            margin-right: 10px;
+        }
+        
+        .status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(26, 26, 26, 0.9);
+            padding: 10px 15px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
         .status-dot {
-            width: 6px;
-            height: 6px;
-            background: var(--accent);
+            width: 8px;
+            height: 8px;
+            background: #00ff88;
             border-radius: 50%;
             animation: pulse 2s infinite;
         }
@@ -103,699 +214,439 @@
             50% { opacity: 0.3; }
         }
         
-        /* Auto-update indicator */
-        .auto-update-status {
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+        /* Opacity slider */
+        .opacity-control {
+            margin: 10px 0;
         }
         
-        .auto-update-label {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-        
-        .auto-update-toggle {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .countdown {
-            font-size: 14px;
-            color: var(--accent);
-            font-weight: 600;
-            min-width: 30px;
-            text-align: right;
-        }
-        
-        /* Metrics */
-        .metrics {
-            margin-bottom: 30px;
-        }
-        
-        .metric {
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 12px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .metric.updating {
-            animation: shimmer 1.5s infinite;
-        }
-        
-        @keyframes shimmer {
-            0% { background: var(--bg-primary); }
-            50% { background: rgba(0, 255, 136, 0.05); }
-            100% { background: var(--bg-primary); }
-        }
-        
-        .metric-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-        }
-        
-        .metric-value {
-            font-size: 28px;
-            font-weight: 600;
-            color: var(--text-primary);
-            transition: all 0.3s ease;
-        }
-        
-        .metric-value.changed {
-            animation: valueChange 0.5s;
-        }
-        
-        @keyframes valueChange {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); color: var(--accent); }
-            100% { transform: scale(1); }
-        }
-        
-        .metric-unit {
-            font-size: 14px;
-            color: var(--text-secondary);
-            margin-left: 4px;
-        }
-        
-        .metric-subtext {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-        
-        .metric-timestamp {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            font-size: 10px;
-            color: var(--text-secondary);
-            opacity: 0.5;
-        }
-        
-        /* Controls */
-        .controls {
-            margin-bottom: 30px;
-        }
-        
-        .control-group {
-            margin-bottom: 20px;
-        }
-        
-        .control-label {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-secondary);
-            margin-bottom: 10px;
-        }
-        
-        .view-tabs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            background: var(--bg-primary);
-            padding: 4px;
-            border-radius: 8px;
-        }
-        
-        .view-tab {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            padding: 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 13px;
-        }
-        
-        .view-tab:hover {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        
-        .view-tab.active {
-            background: var(--accent);
-            color: var(--bg-primary);
-            font-weight: 600;
-        }
-        
-        /* Main content */
-        .main {
-            position: relative;
-            overflow: hidden;
-        }
-        
-        #map {
+        .slider {
             width: 100%;
-            height: 100%;
+            -webkit-appearance: none;
+            height: 4px;
+            background: #444;
+            outline: none;
         }
         
-        #plot-container {
-            width: 100%;
-            height: 100%;
-            display: none;
-            background: var(--bg-primary);
-            padding: 20px;
-        }
-        
-        /* Notification */
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--bg-panel);
-            border: 1px solid var(--accent);
-            border-radius: 8px;
-            padding: 16px 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-            z-index: 10000;
-        }
-        
-        .notification.show {
-            transform: translateX(0);
-        }
-        
-        .notification-icon {
-            width: 24px;
-            height: 24px;
-            background: var(--accent);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .notification-text {
-            font-size: 14px;
-        }
-        
-        /* Loading */
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-        }
-        
-        .loading.active {
-            display: block;
-        }
-        
-        .spinner {
-            width: 48px;
-            height: 48px;
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        /* Toggle switch */
-        .toggle-switch {
-            width: 40px;
-            height: 22px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 11px;
-            position: relative;
-            transition: background 0.3s;
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #00ff88;
             cursor: pointer;
-        }
-        
-        .toggle-switch.active {
-            background: var(--accent);
-        }
-        
-        .toggle-switch::after {
-            content: '';
-            position: absolute;
-            width: 18px;
-            height: 18px;
-            background: white;
             border-radius: 50%;
-            top: 2px;
-            left: 2px;
-            transition: transform 0.3s;
-        }
-        
-        .toggle-switch.active::after {
-            transform: translateX(18px);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Sidebar -->
         <div class="sidebar">
-            <div class="logo">
-                <div class="logo-icon">M</div>
-                <div>
-                    <div class="logo-text">Microclimate</div>
-                    <div class="status-badge">
-                        <div class="status-dot"></div>
-                        <span id="status-text">ONLINE</span>
-                    </div>
+            <div class="logo">🌍 Urban Microclimate</div>
+            
+            <!-- Data Layers -->
+            <div class="layer-controls">
+                <div class="section-title">WARSTWY DANYCH</div>
+                
+                <div class="layer-item">
+                    <span class="layer-name">🏢 Budynki</span>
+                    <div class="toggle" id="toggle-buildings" onclick="toggleLayer('buildings')"></div>
+                </div>
+                
+                <div class="layer-item">
+                    <span class="layer-name">🏔️ Model terenu (DEM)</span>
+                    <div class="toggle" id="toggle-dem" onclick="toggleLayer('dem')"></div>
+                </div>
+                
+                <div class="layer-item">
+                    <span class="layer-name">🌳 Drzewa</span>
+                    <div class="toggle" id="toggle-trees" onclick="toggleLayer('trees')"></div>
+                </div>
+                
+                <div class="layer-item">
+                    <span class="layer-name">🗺️ Pokrycie terenu</span>
+                    <div class="toggle" id="toggle-landcover" onclick="toggleLayer('landcover')"></div>
+                </div>
+                
+                <div class="opacity-control">
+                    <div class="section-title">PRZEZROCZYSTOŚĆ</div>
+                    <input type="range" class="slider" id="opacity-slider" min="0" max="100" value="70">
                 </div>
             </div>
             
-            <!-- Auto-update status -->
-            <div class="auto-update-status">
-                <div class="auto-update-label">Auto-aktualizacja</div>
-                <div class="auto-update-toggle">
-                    <span class="countdown" id="countdown">--</span>
-                    <div class="toggle-switch active" id="auto-update-toggle" onclick="toggleAutoUpdate()"></div>
+            <!-- Simulation Results -->
+            <div class="layer-controls">
+                <div class="section-title">WYNIKI SYMULACJI</div>
+                
+                <div class="layer-item">
+                    <span class="layer-name">🌡️ Temperatura</span>
+                    <div class="toggle" id="toggle-temperature" onclick="toggleLayer('temperature')"></div>
+                </div>
+                
+                <div class="layer-item">
+                    <span class="layer-name">💨 Pole wiatru</span>
+                    <div class="toggle" id="toggle-wind" onclick="toggleLayer('wind')"></div>
+                </div>
+                
+                <div class="layer-item">
+                    <span class="layer-name">🏙️ Wyspa ciepła</span>
+                    <div class="toggle" id="toggle-uhi" onclick="toggleLayer('uhi')"></div>
                 </div>
             </div>
             
             <!-- Metrics -->
-            <div class="metrics">
-                <div class="metric" id="metric-temp">
-                    <div class="metric-timestamp" id="temp-timestamp">--:--</div>
+            <div class="layer-controls">
+                <div class="section-title">METRYKI</div>
+                
+                <div class="metric">
                     <div class="metric-label">Temperatura</div>
                     <div class="metric-value">
-                        <span id="temperature">--</span>
+                        <span id="temp-value">--</span>
                         <span class="metric-unit">°C</span>
                     </div>
-                    <div class="metric-subtext">Open-Meteo API</div>
                 </div>
                 
-                <div class="metric" id="metric-wind">
-                    <div class="metric-timestamp" id="wind-timestamp">--:--</div>
-                    <div class="metric-label">Prędkość wiatru</div>
+                <div class="metric">
+                    <div class="metric-label">Wiatr</div>
                     <div class="metric-value">
-                        <span id="wind-speed">--</span>
+                        <span id="wind-value">--</span>
                         <span class="metric-unit">m/s</span>
                     </div>
-                    <div class="metric-subtext">Kierunek: <span id="wind-dir">--</span>°</div>
                 </div>
                 
-                <div class="metric" id="metric-uhi">
-                    <div class="metric-timestamp" id="uhi-timestamp">--:--</div>
-                    <div class="metric-label">Urban Heat Island</div>
+                <div class="metric">
+                    <div class="metric-label">UHI Intensywność</div>
                     <div class="metric-value">
-                        <span id="uhi">--</span>
+                        <span id="uhi-value">--</span>
                         <span class="metric-unit">°C</span>
                     </div>
-                    <div class="metric-subtext">Intensywność wyspy ciepła</div>
                 </div>
             </div>
             
             <!-- Controls -->
-            <div class="controls">
-                <div class="control-group">
-                    <div class="control-label">Widok</div>
-                    <div class="view-tabs">
-                        <button class="view-tab active" onclick="switchView('2d')">Mapa 2D</button>
-                        <button class="view-tab" onclick="switchView('2.5d')">Wizualizacja 2.5D</button>
+            <button class="button" onclick="runSimulation()">🔄 Uruchom symulację</button>
+            <button class="button secondary" onclick="exportResults()">💾 Eksportuj wyniki</button>
+        </div>
+        
+        <div class="main">
+            <div id="map"></div>
+            
+            <div class="status">
+                <div class="status-dot"></div>
+                <span id="status-text">Połączono</span>
+            </div>
+            
+            <div class="legend" id="legend" style="display: none;">
+                <div class="legend-title" id="legend-title">Temperatura [°C]</div>
+                <div class="legend-scale">
+                    <div class="legend-gradient" id="legend-gradient"></div>
+                    <div>
+                        <div id="legend-max">30</div>
+                        <div id="legend-min">15</div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Main content -->
-        <div class="main">
-            <div id="map"></div>
-            <div id="plot-container"></div>
-            
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Notification -->
-    <div class="notification" id="notification">
-        <div class="notification-icon">✓</div>
-        <div class="notification-text" id="notification-text">Dane zaktualizowane</div>
     </div>
     
     <script>
         // Configuration
-        const API_URL = 'http://localhost:8000';  // Lokalny development
+        const API_URL = 'http://localhost:8000';
+        const DATA_PATH = '/content/drive/MyDrive/microclimate/data/processed/';
         
         // State
         let map;
-        let currentView = '2d';
+        let layers = {
+            buildings: null,
+            dem: null,
+            trees: null,
+            landcover: null,
+            temperature: null,
+            wind: null,
+            uhi: null
+        };
         let currentData = null;
-        let lastUpdateTime = null;
-        let autoUpdateEnabled = true;
-        let updateInterval = 10000; // 10 sekund
-        let countdownValue = 10;
-        let countdownInterval;
-        let updateTimer;
-        let heatmapLayer = null;
-        let windMarkers = [];
         
-        // Initialize 2D map
+        // Initialize map
         function initMap() {
             map = L.map('map').setView([54.156, 19.404], 13);
             
+            // Base layer
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors',
+                attribution: '© OpenStreetMap',
                 maxZoom: 19
             }).addTo(map);
             
-            console.log('✅ Mapa zainicjalizowana');
+            // Load initial data layers
+            loadDataLayers();
         }
         
-        // Switch between views
-        function switchView(view) {
-            currentView = view;
-            
-            document.querySelectorAll('.view-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            if (view === '2d') {
-                document.getElementById('map').style.display = 'block';
-                document.getElementById('plot-container').style.display = 'none';
-            } else {
-                document.getElementById('map').style.display = 'none';
-                document.getElementById('plot-container').style.display = 'block';
-                if (currentData) {
-                    render25D();
-                }
-            }
-        }
-        
-        // Toggle auto-update
-        function toggleAutoUpdate() {
-            autoUpdateEnabled = !autoUpdateEnabled;
-            const toggle = document.getElementById('auto-update-toggle');
-            toggle.classList.toggle('active');
-            
-            if (autoUpdateEnabled) {
-                startAutoUpdate();
-                showNotification('Auto-aktualizacja włączona');
-            } else {
-                stopAutoUpdate();
-                document.getElementById('countdown').textContent = '--';
-                showNotification('Auto-aktualizacja wyłączona');
-            }
-        }
-        
-        // Start auto-update
-        function startAutoUpdate() {
-            if (!autoUpdateEnabled) return;
-            
-            countdownValue = 10;
-            updateCountdown();
-            
-            // Clear existing intervals
-            if (countdownInterval) clearInterval(countdownInterval);
-            if (updateTimer) clearTimeout(updateTimer);
-            
-            // Start countdown
-            countdownInterval = setInterval(updateCountdown, 1000);
-            
-            // Schedule update
-            updateTimer = setTimeout(() => {
-                fetchLatestData();
-                startAutoUpdate(); // Restart cycle
-            }, updateInterval);
-        }
-        
-        // Stop auto-update
-        function stopAutoUpdate() {
-            if (countdownInterval) clearInterval(countdownInterval);
-            if (updateTimer) clearTimeout(updateTimer);
-        }
-        
-        // Update countdown
-        function updateCountdown() {
-            document.getElementById('countdown').textContent = countdownValue;
-            countdownValue--;
-            if (countdownValue < 0) {
-                clearInterval(countdownInterval);
-            }
-        }
-        
-        // Show notification
-        function showNotification(text) {
-            const notification = document.getElementById('notification');
-            const notificationText = document.getElementById('notification-text');
-            
-            notificationText.textContent = text;
-            notification.classList.add('show');
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-        }
-        
-        // Animate metric update
-        function updateMetric(elementId, value, metricId) {
-            const element = document.getElementById(elementId);
-            const metric = document.getElementById(metricId);
-            const oldValue = element.textContent;
-            
-            if (oldValue !== value.toString()) {
-                metric.classList.add('updating');
-                setTimeout(() => {
-                    element.textContent = value;
-                    element.classList.add('changed');
-                    setTimeout(() => {
-                        element.classList.remove('changed');
-                        metric.classList.remove('updating');
-                    }, 500);
-                }, 300);
-            }
-        }
-        
-        // Update timestamp
-        function updateTimestamp(elementId) {
-            const now = new Date();
-            const time = now.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-            document.getElementById(elementId).textContent = time;
-        }
-        
-        // Fetch latest data
-        async function fetchLatestData() {
+        // Load GeoTIFF layers
+        async function loadDataLayers() {
+            // Buildings layer
             try {
-                // Check for latest simulation
-                const statusResponse = await fetch(`${API_URL}/api/status`);
-                if (statusResponse.ok) {
-                    const status = statusResponse.json();
-                    
-                    // Fetch weather
-                    const weatherResponse = await fetch(`${API_URL}/api/weather`);
-                    if (weatherResponse.ok) {
-                        const weather = await weatherResponse.json();
-                        updateMetric('temperature', weather.temperature.toFixed(1), 'metric-temp');
-                        updateMetric('wind-speed', weather.wind_speed.toFixed(1), 'metric-wind');
-                        document.getElementById('wind-dir').textContent = weather.wind_direction.toFixed(0);
-                        updateTimestamp('temp-timestamp');
-                        updateTimestamp('wind-timestamp');
-                    }
-                    
-                    // Try to get latest simulation results
-                    const simulateResponse = await fetch(`${API_URL}/api/simulate`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            timestamp: new Date().toISOString(),
-                            bounds: {
-                                lat_min: 54.1,
-                                lat_max: 54.2,
-                                lon_min: 19.3,
-                                lon_max: 19.5
-                            },
-                            resolution: 5.0
-                        })
-                    });
-                    
-                    if (simulateResponse.ok) {
-                        const newData = await simulateResponse.json();
-                        
-                        // Check if data is actually new
-                        if (!currentData || newData.id !== currentData.id) {
-                            currentData = newData;
-                            updateMetric('uhi', newData.thermal_field.uhi_intensity.toFixed(1), 'metric-uhi');
-                            updateTimestamp('uhi-timestamp');
-                            updateVisualization();
-                            showNotification('Nowe wyniki symulacji!');
-                            
-                            // Flash status
-                            document.getElementById('status-text').textContent = 'UPDATED';
-                            setTimeout(() => {
-                                document.getElementById('status-text').textContent = 'ONLINE';
-                            }, 2000);
-                        }
-                    }
-                    
-                    document.querySelector('.status-dot').style.background = '#00ff88';
+                const response = await fetch(`${API_URL}/api/layer/buildings`);
+                if (response.ok) {
+                    const data = await response.json();
+                    layers.buildings = createRasterLayer(data, 'buildings');
                 }
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                document.querySelector('.status-dot').style.background = '#ff4444';
+            } catch (e) {
+                console.log('Buildings layer not available');
+            }
+            
+            // DEM layer
+            try {
+                const response = await fetch(`${API_URL}/api/layer/dem`);
+                if (response.ok) {
+                    const data = await response.json();
+                    layers.dem = createRasterLayer(data, 'dem');
+                }
+            } catch (e) {
+                console.log('DEM layer not available');
             }
         }
         
-        // Update visualization
-        function updateVisualization() {
-            if (!currentData || !map) return;
+        // Create raster layer from data
+        function createRasterLayer(data, type) {
+            const { values, bounds, width, height } = data;
             
-            // Clear existing layers
-            if (heatmapLayer) map.removeLayer(heatmapLayer);
-            windMarkers.forEach(marker => map.removeLayer(marker));
-            windMarkers = [];
+            // Create canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
             
-            // Temperature heatmap
-            const temps = currentData.thermal_field.surface_temperature;
-            const heatData = [];
+            // Create image data
+            const imageData = ctx.createImageData(width, height);
+            const pixels = imageData.data;
             
-            for (let i = 0; i < temps.length; i += 3) {
-                for (let j = 0; j < temps[i].length; j += 3) {
-                    const lat = 54.1 + (i / temps.length) * 0.1;
-                    const lon = 19.3 + (j / temps[i].length) * 0.2;
-                    const intensity = temps[i][j] / 30;
-                    heatData.push([lat, lon, intensity]);
+            // Color schemes
+            const colorSchemes = {
+                buildings: (v) => v > 0 ? [100, 100, 200, 200] : [0, 0, 0, 0],
+                dem: (v) => {
+                    const norm = (v - data.min) / (data.max - data.min);
+                    return [norm * 100, norm * 200, norm * 100, 150];
+                },
+                temperature: (v) => {
+                    const norm = (v - 15) / 15; // 15-30°C range
+                    return [255 * norm, 100, 100 * (1-norm), 200];
+                },
+                trees: (v) => v > 0 ? [0, 200, 0, 150] : [0, 0, 0, 0],
+                landcover: (v) => {
+                    const colors = {
+                        1: [100, 100, 100, 150], // Urban
+                        2: [200, 200, 100, 150], // Bare soil
+                        3: [0, 200, 0, 150],      // Vegetation
+                        4: [0, 0, 200, 150]       // Water
+                    };
+                    return colors[v] || [0, 0, 0, 0];
                 }
+            };
+            
+            // Fill pixels
+            const colorFunc = colorSchemes[type] || colorSchemes.buildings;
+            for (let i = 0; i < values.length; i++) {
+                const color = colorFunc(values[i]);
+                pixels[i * 4] = color[0];
+                pixels[i * 4 + 1] = color[1];
+                pixels[i * 4 + 2] = color[2];
+                pixels[i * 4 + 3] = color[3];
             }
             
-            heatmapLayer = L.heatLayer(heatData, {
-                radius: 25,
-                blur: 15,
-                maxZoom: 17,
-                gradient: {
-                    0.0: 'blue',
-                    0.3: 'cyan',
-                    0.5: 'lime',
-                    0.7: 'yellow',
-                    1.0: 'red'
-                }
-            }).addTo(map);
+            ctx.putImageData(imageData, 0, 0);
             
-            // Wind vectors
-            const u = currentData.wind_field.u_10m;
-            const v = currentData.wind_field.v_10m;
-            const speed = currentData.wind_field.speed_10m;
+            // Create Leaflet image overlay
+            const imageUrl = canvas.toDataURL();
+            const imageBounds = [[bounds[1], bounds[0]], [bounds[3], bounds[2]]];
             
-            for (let i = 0; i < speed.length; i += 8) {
-                for (let j = 0; j < speed[i].length; j += 8) {
-                    if (speed[i][j] > 2) {
-                        const lat = 54.1 + (i / speed.length) * 0.1;
-                        const lon = 19.3 + (j / speed[i].length) * 0.2;
-                        const angle = Math.atan2(v[i][j], u[i][j]) * 180 / Math.PI;
-                        
-                        const arrow = L.divIcon({
-                            html: `<div style="transform: rotate(${angle}deg); color: #4488ff; font-size: ${10 + speed[i][j]}px;">➤</div>`,
-                            iconSize: [20, 20],
-                            className: 'wind-arrow'
-                        });
-                        
-                        const marker = L.marker([lat, lon], {icon: arrow}).addTo(map);
-                        windMarkers.push(marker);
-                    }
+            return L.imageOverlay(imageUrl, imageBounds, {
+                opacity: 0.7,
+                interactive: true
+            });
+        }
+        
+        // Toggle layer visibility
+        function toggleLayer(layerName) {
+            const toggle = document.getElementById(`toggle-${layerName}`);
+            const layer = layers[layerName];
+            
+            if (!layer) {
+                // Try to load from simulation results
+                if (currentData && ['temperature', 'wind', 'uhi'].includes(layerName)) {
+                    createResultLayer(layerName);
                 }
+                return;
             }
             
-            if (currentView === '2.5d') {
-                render25D();
+            if (toggle.classList.contains('active')) {
+                toggle.classList.remove('active');
+                map.removeLayer(layer);
+            } else {
+                toggle.classList.add('active');
+                layer.addTo(map);
+                
+                // Show legend for certain layers
+                if (['temperature', 'uhi'].includes(layerName)) {
+                    showLegend(layerName);
+                }
             }
         }
         
-        // Render 2.5D visualization
-        function render25D() {
+        // Create result layers from simulation
+        function createResultLayer(type) {
             if (!currentData) return;
             
-            const temps = currentData.thermal_field.surface_temperature;
-            const windSpeed = currentData.wind_field.speed_10m;
-            
-            const trace1 = {
-                z: temps,
-                type: 'surface',
-                colorscale: 'Hot',
-                name: 'Temperatura',
-                showscale: true,
-                colorbar: {
-                    title: 'Temp [°C]',
-                    x: 0.45
+            if (type === 'temperature') {
+                const temps = currentData.thermal_field.surface_temperature;
+                const heatData = [];
+                
+                for (let i = 0; i < temps.length; i += 2) {
+                    for (let j = 0; j < temps[i].length; j += 2) {
+                        const lat = 54.1 + (i / temps.length) * 0.1;
+                        const lon = 19.3 + (j / temps[i].length) * 0.2;
+                        heatData.push([lat, lon, temps[i][j] / 30]);
+                    }
                 }
-            };
-            
-            const trace2 = {
-                z: windSpeed,
-                type: 'surface',
-                colorscale: 'Viridis',
-                name: 'Wiatr',
-                showscale: true,
-                colorbar: {
-                    title: 'Wiatr [m/s]',
-                    x: 1.0
-                },
-                xaxis: 'x2',
-                yaxis: 'y2',
-                scene: 'scene2'
-            };
-            
-            const layout = {
-                title: 'Symulacja mikroklimatu - wizualizacja 2.5D',
-                paper_bgcolor: '#1a1a1a',
-                plot_bgcolor: '#1a1a1a',
-                font: { color: '#ffffff' },
-                grid: {rows: 1, columns: 2},
-                scene: {
-                    camera: {
-                        eye: {x: 1.5, y: 1.5, z: 1.2}
-                    },
-                    xaxis: {title: 'X'},
-                    yaxis: {title: 'Y'},
-                    zaxis: {title: 'Temperatura [°C]'}
-                },
-                scene2: {
-                    camera: {
-                        eye: {x: 1.5, y: 1.5, z: 1.2}
-                    },
-                    xaxis: {title: 'X'},
-                    yaxis: {title: 'Y'},
-                    zaxis: {title: 'Prędkość [m/s]'}
-                }
-            };
-            
-            Plotly.newPlot('plot-container', [trace1, trace2], layout);
-        }
-        
-        // Initialize
-        window.addEventListener('load', () => {
-            initMap();
-            fetchLatestData();
-            
-            // Start auto-update
-            if (autoUpdateEnabled) {
-                startAutoUpdate();
+                
+                layers.temperature = L.heatLayer(heatData, {
+                    radius: 25,
+                    blur: 15,
+                    maxZoom: 17,
+                    gradient: {
+                        0.0: 'blue',
+                        0.25: 'cyan',
+                        0.5: 'lime',
+                        0.75: 'yellow',
+                        1.0: 'red'
+                    }
+                });
+                
+                layers.temperature.addTo(map);
+                document.getElementById('toggle-temperature').classList.add('active');
             }
             
-            console.log('🌍 Urban Microclimate Simulator');
-            console.log('🔄 Auto-update: ON (10s interval)');
-            console.log('📊 2556 budynków załadowanych');
+            if (type === 'wind') {
+                const windGroup = L.layerGroup();
+                const u = currentData.wind_field.u_10m;
+                const v = currentData.wind_field.v_10m;
+                const speed = currentData.wind_field.speed_10m;
+                
+                for (let i = 0; i < speed.length; i += 5) {
+                    for (let j = 0; j < speed[i].length; j += 5) {
+                        if (speed[i][j] > 2) {
+                            const lat = 54.1 + (i / speed.length) * 0.1;
+                            const lon = 19.3 + (j / speed[i].length) * 0.2;
+                            const angle = Math.atan2(v[i][j], u[i][j]) * 180 / Math.PI;
+                            
+                            const arrow = L.divIcon({
+                                html: `<div style="transform: rotate(${angle}deg); color: #4488ff; font-size: ${10 + speed[i][j]*2}px;">→</div>`,
+                                iconSize: [20, 20],
+                                className: 'wind-arrow'
+                            });
+                            
+                            windGroup.addLayer(L.marker([lat, lon], {icon: arrow}));
+                        }
+                    }
+                }
+                
+                layers.wind = windGroup;
+                layers.wind.addTo(map);
+                document.getElementById('toggle-wind').classList.add('active');
+            }
+        }
+        
+        // Show legend
+        function showLegend(type) {
+            const legend = document.getElementById('legend');
+            const title = document.getElementById('legend-title');
+            const gradient = document.getElementById('legend-gradient');
+            
+            if (type === 'temperature') {
+                title.textContent = 'Temperatura [°C]';
+                gradient.style.background = 'linear-gradient(to right, blue, cyan, lime, yellow, red)';
+                document.getElementById('legend-max').textContent = '30';
+                document.getElementById('legend-min').textContent = '15';
+            } else if (type === 'uhi') {
+                title.textContent = 'Urban Heat Island [°C]';
+                gradient.style.background = 'linear-gradient(to right, blue, white, red)';
+                document.getElementById('legend-max').textContent = '+5';
+                document.getElementById('legend-min').textContent = '-5';
+            }
+            
+            legend.style.display = 'block';
+        }
+        
+        // Run simulation
+        async function runSimulation() {
+            document.getElementById('status-text').textContent = 'Obliczanie...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/simulate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        timestamp: new Date().toISOString(),
+                        bounds: {
+                            lat_min: 54.1,
+                            lat_max: 54.2,
+                            lon_min: 19.3,
+                            lon_max: 19.5
+                        },
+                        resolution: 5.0
+                    })
+                });
+                
+                if (response.ok) {
+                    currentData = await response.json();
+                    
+                    // Update metrics
+                    document.getElementById('temp-value').textContent = currentData.weather.temperature.toFixed(1);
+                    document.getElementById('wind-value').textContent = currentData.weather.wind_speed.toFixed(1);
+                    document.getElementById('uhi-value').textContent = currentData.thermal_field.uhi_intensity.toFixed(1);
+                    
+                    // Auto-enable temperature layer
+                    if (!document.getElementById('toggle-temperature').classList.contains('active')) {
+                        toggleLayer('temperature');
+                    }
+                    
+                    document.getElementById('status-text').textContent = 'Zakończono';
+                }
+            } catch (error) {
+                console.error('Simulation error:', error);
+                document.getElementById('status-text').textContent = 'Błąd';
+            }
+        }
+        
+        // Export results
+        function exportResults() {
+            if (!currentData) {
+                alert('Brak wyników do eksportu');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(currentData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = `simulation_${new Date().toISOString()}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        }
+        
+        // Opacity control
+        document.getElementById('opacity-slider').addEventListener('input', (e) => {
+            const opacity = e.target.value / 100;
+            Object.values(layers).forEach(layer => {
+                if (layer && layer.setOpacity) {
+                    layer.setOpacity(opacity);
+                }
+            });
         });
         
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', () => {
-            stopAutoUpdate();
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initMap();
+            runSimulation(); // Auto-run first simulation
         });
     </script>
 </body>
