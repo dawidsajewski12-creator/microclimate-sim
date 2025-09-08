@@ -4,6 +4,7 @@ from scipy import ndimage, interpolate
 from numba import jit, prange
 import rasterio
 from typing import Tuple, Dict
+import logging
 
 class WindFieldSolver:
     """Solver przepływu potencjalnego z korekcją dla przeszkód miejskich"""
