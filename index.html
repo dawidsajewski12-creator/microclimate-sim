@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urban Microclimate Simulator | Elbląg</title>
+    
+    <!-- Libraries -->
+    <link href="https://unpkg.com/mapbox-gl@2.15.0/dist/mapbox-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/mapbox-gl@2.15.0/dist/mapbox-gl.js"></script>
+    <script src="https://unpkg.com/deck.gl@8.9.0/dist.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-panel: rgba(20, 20, 20, 0.95);
+            --border: rgba(255, 255, 255, 0.1);
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent: #00ff88;
+            --danger: #ff0066;
+            --warning: #ffaa00;
+            --info: #0099ff;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+        
+        #app {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 360px;
+            max-height: calc(100vh - 40px);
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        
+        .panel-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.offline {
+            background: var(--danger);
+            animation: none;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .panel-content {
+            padding: 20px;
+        }
+        
+        /* Metrics */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        
+        .metric-card.full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .metric-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+        
+        .metric-unit {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+        
+        .metric-change {
+            font-size: 12px;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .metric-change.positive {
+            color: var(--accent);
+        }
+        
+        .metric-change.negative {
+            color: var(--danger);
+        }
+        
+        /* Controls */
+        .control-section {
+            margin-bottom: 24px;
+        }
+        
+        .control-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+        
+        .layer-toggles {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .toggle-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            position: relative;
+            transition: background 0.3s;
+        }
+        
+        .toggle-switch.active {
+            background: var(--accent);
+        }
+        
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+        
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+        
+        /* Simulation Button */
+        .sim-button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--accent), #00cc66);
+            border: none;
+            border-radius: 10px;
+            color: var(--bg-primary);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        
+        .sim-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .sim-button:active {
+            transform: translateY(0);
+        }
+        
+        .sim-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Info Panel */
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            max-width: 600px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            z-index: 900;
+        }
+        
+        .info-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .info-tab {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .info-tab.active {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-color: var(--accent);
+        }
+        
+        .info-content {
+            display: none;
+        }
+        
+        .info-content.active {
+            display: block;
+        }
+        
+        /* Legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            z-index: 900;
+        }
+        
+        .legend-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+        
+        .legend-scale {
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #0066ff, #00ff88, #ffaa00, #ff0066);
+            margin-bottom: 8px;
+        }
+        
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+        
+        /* Loading */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        
+        .loading-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .control-panel {
+                width: calc(100% - 40px);
+                max-width: 360px;
+            }
+            
+            .info-panel {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="map"></div>
+        
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="panel-header">
+                <div class="status-dot" id="status-dot"></div>
+                <div class="panel-title">Microclimate Monitor</div>
+            </div>
+            
+            <div class="panel-content">
+                <!-- Metrics -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Wiatr</div>
+                        <div class="metric-value">
+                            <span id="wind-speed">--</span>
+                            <span class="metric-unit">m/s</span>
+                        </div>
+                        <div class="metric-change" id="wind-change">
+                            <span>↑ 2.3 m/s</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-label">Temperatura</div>
+                        <div class="metric-value">
+                            <span id="temperature">--</span>
+                            <span class="metric-unit">°C</span>
+                        </div>
+                        <div class="metric-change" id="temp-change">
+                            <span>↓ 1.2°C</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card full-width">
+                        <div class="metric-label">Urban Heat Island</div>
+                        <div class="metric-value">
+                            <span id="uhi">--</span>
+                            <span class="metric-unit">°C</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Layer Controls -->
+                <div class="control-section">
+                    <div class="control-label">Warstwy wizualizacji</div>
+                    <div class="layer-toggles">
+                        <div class="toggle-item" onclick="toggleLayer('wind')">
+                            <span>Pole wiatru</span>
+                            <div class="toggle-switch active" id="toggle-wind"></div>
+                        </div>
+                        <div class="toggle-item" onclick="toggleLayer('temperature')">
+                            <span>Temperatura powierzchni</span>
+                            <div class="toggle-switch active" id="toggle-temperature"></div>
+                        </div>
+                        <div class="toggle-item" onclick="toggleLayer('turbulence')">
+                            <span>Turbulencje</span>
+                            <div class="toggle-switch" id="toggle-turbulence"></div>
+                        </div>
+                        <div class="toggle-item" onclick="toggleLayer('buildings')">
+                            <span>Budynki 3D</span>
+                            <div class="toggle-switch active" id="toggle-buildings"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Simulation Button -->
+                <button class="sim-button" onclick="runSimulation()" id="sim-button">
+                    Uruchom symulację
+                </button>
+            </div>
+        </div>
+        
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-title">Temperatura [°C]</div>
+            <div class="legend-scale"></div>
+            <div class="legend-labels">
+                <span>15</span>
+                <span>20</span>
+                <span>25</span>
+                <span>30</span>
+            </div>
+        </div>
+        
+        <!-- Loading -->
+        <div class="loading-overlay" id="loading">
+            <div class="loader"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const API_URL = 'YOUR_NGROK_URL'; // Podmień na faktyczny URL z Colab
+        
+        // State
+        let map;
+        let deckOverlay;
+        let currentData = null;
+        let layers = {
+            wind: true,
+            temperature: true,
+            turbulence: false,
+            buildings: true
+        };
+        
+        // Initialize map
+        function initMap() {
+            mapboxgl.accessToken = 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGFiY2RlZmciLCJ0IjoxNjAwMDAwMDAwfQ.example'; // Opcjonalny token
+            
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: {
+                    version: 8,
+                    sources: {
+                        osm: {
+                            type: 'raster',
+                            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                            tileSize: 256
+                        }
+                    },
+                    layers: [{
+                        id: 'osm',
+                        type: 'raster',
+                        source: 'osm'
+                    }]
+                },
+                center: [19.404, 54.156], // Elbląg
+                zoom: 14,
+                pitch: 45
+            });
+            
+            // Initialize deck.gl
+            deckOverlay = new deck.MapboxOverlay({
+                interleaved: true,
+                layers: []
+            });
+            
+            map.addControl(deckOverlay);
+            map.addControl(new mapboxgl.NavigationControl());
+        }
+        
+        // Toggle layer visibility
+        function toggleLayer(layerName) {
+            layers[layerName] = !layers[layerName];
+            document.getElementById(`toggle-${layerName}`).classList.toggle('active');
+            updateVisualization();
+        }
+        
+        // Run simulation
+        async function runSimulation() {
+            const button = document.getElementById('sim-button');
+            const loading = document.getElementById('loading');
+            
+            button.disabled = true;
+            loading.classList.add('active');
+            
+            try {
+                const response = await fetch(`${API_URL}/api/simulate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        timestamp: new Date().toISOString(),
+                        bounds: {
+                            lat_min: 54.1,
+                            lat_max: 54.2,
+                            lon_min: 19.3,
+                            lon_max: 19.5
+                        },
+                        resolution: 5.0
+                    })
+                });
+                
+                if (response.ok) {
+                    currentData = await response.json();
+                    updateMetrics();
+                    updateVisualization();
+                    document.getElementById('status-dot').classList.remove('offline');
+                } else {
+                    console.error('Simulation failed:', await response.text());
+                    document.getElementById('status-dot').classList.add('offline');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('status-dot').classList.add('offline');
+            } finally {
+                button.disabled = false;
+                loading.classList.remove('active');
+            }
+        }
+        
+        // Update metrics display
+        function updateMetrics() {
+            if (!currentData) return;
+            
+            document.getElementById('wind-speed').textContent = 
+                currentData.weather.wind_speed.toFixed(1);
+            document.getElementById('temperature').textContent = 
+                currentData.weather.temperature.toFixed(1);
+            document.getElementById('uhi').textContent = 
+                currentData.thermal_field.uhi_intensity.toFixed(1);
+        }
+        
+        // Update visualization layers
+        function updateVisualization() {
+            if (!currentData || !deckOverlay) return;
+            
+            const deckLayers = [];
+            
+            // Temperature heatmap
+            if (layers.temperature) {
+                const tempData = [];
+                const temps = currentData.thermal_field.surface_temperature;
+                for (let i = 0; i < temps.length; i++) {
+                    for (let j = 0; j < temps[i].length; j++) {
+                        tempData.push({
+                            position: [
+                                19.3 + (j / temps[i].length) * 0.2,
+                                54.1 + (i / temps.length) * 0.1
+                            ],
+                            weight: temps[i][j]
+                        });
+                    }
+                }
+                
+                deckLayers.push(new deck.HeatmapLayer({
+                    id: 'temperature-heatmap',
+                    data: tempData,
+                    getPosition: d => d.position,
+                    getWeight: d => d.weight,
+                    radiusPixels: 30
+                }));
+            }
+            
+            // Wind arrows
+            if (layers.wind) {
+                const windData = [];
+                const u = currentData.wind_field.u_10m;
+                const v = currentData.wind_field.v_10m;
+                const speed = currentData.wind_field.speed_10m;
+                
+                for (let i = 0; i < u.length; i += 5) {
+                    for (let j = 0; j < u[i].length; j += 5) {
+                        windData.push({
+                            position: [
+                                19.3 + (j / u[i].length) * 0.2,
+                                54.1 + (i / u.length) * 0.1
+                            ],
+                            angle: Math.atan2(v[i][j], u[i][j]) * 180 / Math.PI,
+                            speed: speed[i][j]
+                        });
+                    }
+                }
+                
+                deckLayers.push(new deck.IconLayer({
+                    id: 'wind-arrows',
+                    data: windData,
+                    getPosition: d => d.position,
+                    getIcon: () => ({
+                        url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiPjxwYXRoIGQ9Ik0xMiAyTDYgOGwyIDJsNC00djE0aDJWNmw0IDRsMi0yeiIgZmlsbD0iIzAwZmY4OCIvPjwvc3ZnPg==',
+                        width: 24,
+                        height: 24
+                    }),
+                    getSize: d => 15 + d.speed * 2,
+                    getAngle: d => d.angle
+                }));
+            }
+            
+            deckOverlay.setProps({ layers: deckLayers });
+        }
+        
+        // Check API status
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${API_URL}/api/status`);
+                if (response.ok) {
+                    document.getElementById('status-dot').classList.remove('offline');
+                } else {
+                    document.getElementById('status-dot').classList.add('offline');
+                }
+            } catch {
+                document.getElementById('status-dot').classList.add('offline');
+            }
+        }
+        
+        // Initialize
+        window.addEventListener('load', () => {
+            initMap();
+            checkStatus();
+            setInterval(checkStatus, 30000); // Check every 30s
+            
+            // Auto-run first simulation
+            setTimeout(runSimulation, 2000);
+        });
+    </script>
+</body>
+</html>
